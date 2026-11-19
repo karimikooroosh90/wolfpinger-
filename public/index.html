@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1020"><title>WOLFPINGER</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#141d32;--line:#273653;--muted:#9aabc7;--cyan:#55d6ff;--green:#55e6a5;--red:#ff7585}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#172d50 0,transparent 38%),var(--bg);color:#eef5ff;font-family:system-ui,Tahoma,Arial,sans-serif}
+main{max-width:960px;margin:auto;padding:26px 16px 50px}.top{display:flex;align-items:center;gap:14px;margin-bottom:22px}.logo{width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,#153b60,#087f9f);display:grid;place-items:center;font-size:28px}.brand{font-size:23px;font-weight:850;letter-spacing:1px}.sub{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.card{background:linear-gradient(145deg,#17233b,#111a2c);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 12px 35px #0003}.label{color:var(--muted);font-size:13px}.big{font-size:30px;font-weight:800;margin:8px 0}.green{color:var(--green)}.cyan{color:var(--cyan)}.muted{color:var(--muted)}button{border:0;border-radius:12px;padding:12px 17px;background:linear-gradient(90deg,#0c9ec4,#267be6);color:white;font-weight:750;font-size:14px;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.row{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0}.pill{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:4px 9px;color:var(--muted)}.notice{margin-top:16px;padding:14px;border:1px solid #695b31;background:#2b2618;border-radius:14px;color:#f5dca1;font-size:13px;line-height:1.8}.foot{margin-top:20px;color:var(--muted);font-size:12px;line-height:1.8}#status{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body><main>
+<header class="top"><div class="logo">🐺</div><div><div class="brand">WOLFPINGER</div><div class="sub">Network diagnostics · Free-tier edition</div></div><span class="pill" style="margin-right:auto">HYBRID / ALL GAMES</span></header>
+<section class="grid">
+<div class="card"><div class="label">زمان رفت‌وبرگشت گوشی تا Render</div><div class="big cyan" id="rtt">— ms</div><div class="sub">اندازه‌گیری HTTP از دستگاه شما تا سرور برنامه</div></div>
+<div class="card"><div class="label">وضعیت اینترنت دستگاه</div><div class="big green" id="online">در حال بررسی</div><div class="sub">وضعیت اتصال مرورگر</div></div>
+<div class="card"><div class="label">وضعیت سرویس</div><div class="big" id="health">—</div><div class="sub" id="clock">—</div></div>
+</section>
+<div class="actions"><button id="run">اجرای تست اتصال</button><button id="server">تست مسیر خروجی سرور</button></div>
+<section class="card"><h3 style="margin-top:0">نتایج مسیر خروجی Render</h3><div id="results" class="muted">برای اجرای تست، دکمه دوم را بزنید.</div></section>
+<div class="notice"><b>نکته مهم:</b> این نسخه ابزار تشخیص و پایش شبکه است، نه VPN یا تونل بازی. پینگ نمایش‌داده‌شده در کارت اول، پینگ واقعی داخل بازی نیست. تست‌های کارت دوم نیز از دیتاسنتر Render اجرا می‌شوند. این برنامه نمی‌تواند پینگ همه بازی‌ها را تضمینی کاهش دهد.</div>
+<div class="foot">نسخه 1.0 · بدون پایگاه‌داده و بدون سرویس پولی. در پلن رایگان ممکن است سرویس پس از بی‌کاری به خواب برود و اولین درخواست کندتر باشد.</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+async function runClient(){
+  $("run").disabled=true;$("rtt").textContent="…";$("online").textContent=navigator.onLine?"متصل":"آفلاین";
+  try{
+    const t0=performance.now();const r=await fetch("/api/client-check?x="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);await r.json();
+    $("rtt").textContent=(performance.now()-t0).toFixed(0)+" ms";
+    $("health").textContent="فعال";$("health").className="big green";$("clock").textContent="آخرین پاسخ: "+new Date().toLocaleTimeString();
+  }catch(e){$("rtt").textContent="خطا";$("health").textContent="در دسترس نیست";$("health").className="big";$("clock").textContent=e.message}
+  $("run").disabled=false;
+}
+async function runServer(){
+  $("server").disabled=true;$("results").textContent="در حال آزمایش…";
+  try{
+    const r=await fetch("/api/server-probes");if(!r.ok)throw new Error("HTTP "+r.status);
+    const d=await r.json();$("results").innerHTML=d.results.map(x=>`<div class="row"><span>${x.name}<br><small class="muted">${x.host}:${x.port}</small></span><b class="${x.ok?'green':''}">${x.ok?x.ms+' ms':x.error}</b></div>`).join("")+
+    `<p class="sub">${d.note}</p>`;
+  }catch(e){$("results").textContent="خطا: "+e.message}
+  $("server").disabled=false;
+}
+$("run").addEventListener("click",runClient);$("server").addEventListener("click",runServer);
+window.addEventListener("online",()=>{$("online").textContent="متصل";$("online").className="big green"});
+window.addEventListener("offline",()=>{$("online").textContent="آفلاین";$("online").className="big"});
+runClient();
+</script></body></html>
